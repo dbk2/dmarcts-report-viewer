@@ -100,7 +100,10 @@ function tmpl_reportData($reportnumber, $allowed_reports, $date_format, $host_lo
 	$reportdata[] = "      <th>Host Name</th>";
 	$reportdata[] = "      <th>Message Count</th>";
 	$reportdata[] = "      <th>Disposition</th>";
+	$reportdata[] = "      <th>DKIM Result</th>";
+	$reportdata[] = "      <th>SPF Result</th>";
 	$reportdata[] = "      <th>Reason</th>";
+	$reportdata[] = "      <th>Header From</th>";
 	$reportdata[] = "      <th>DKIM Domain</th>";
 	$reportdata[] = "      <th>Raw DKIM Result</th>";
 	$reportdata[] = "      <th>SPF Domain</th>";
@@ -141,7 +144,10 @@ function tmpl_reportData($reportnumber, $allowed_reports, $date_format, $host_lo
     }
 		$reportdata[] = "      <td>". $row['rcount']. "</td>";
 		$reportdata[] = "      <td>". $row['disposition']. "</td>";
+		$reportdata[] = "      <td>". $row['dkim_align']. "</td>";
+		$reportdata[] = "      <td>". $row['spf_align']. "</td>";
 		$reportdata[] = "      <td>". $row['reason']. "</td>";
+		$reportdata[] = "      <td>". $row['identifier_hfrom']. "</td>";
 		$reportdata[] = "      <td>". $row['dkimdomain']. "</td>";
 		$reportdata[] = "      <td>". $row['dkimresult']. "</td>";
 		$reportdata[] = "      <td>". $row['spfdomain']. "</td>";
