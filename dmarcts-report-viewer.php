@@ -117,7 +117,7 @@ function tmpl_reportData($reportnumber, $allowed_reports, $date_format, $host_lo
 	$raw_result_failed = array('fail', null, 'none', 'neutral');
 
 	global $mysqli;
-	$sql = "SELECT * FROM rptrecord where serial = $reportnumber";
+	$sql = "SELECT * FROM rptrecord where serial = $reportnumber order by ip, ip6";
 	$query = $mysqli->query($sql) or die("Query failed: ".$mysqli->error." (Error #" .$mysqli->errno.")");
 	while($row = $query->fetch_assoc()) {
 		$status="";
