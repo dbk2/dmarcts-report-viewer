@@ -38,9 +38,9 @@ You should be presented with the basic report view, allowing you to navigate thr
 
 ### Legend of the Colors
 * Green : DKIM and SPF = pass
+* Yellow : Either DKIM or SPF = pass
 * Red : DKIM and SPF = fail
-* Orange : Either DKIM or SPF (but not both) = fail
-* Yellow : Some other condition, and should be investigated (e.g. DKIM or SPF result were missing, "softfail", "temperror", etc.)
+* Orange : DKIM and SPF = fail, but raw result should be investigated (e.g. "softfail", "temperror", etc.)
 
 
 More info can currently be found at : [TechSneeze.com](http://www.techsneeze.com/dmarc-report/)

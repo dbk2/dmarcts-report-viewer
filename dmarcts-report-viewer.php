@@ -114,19 +114,22 @@ function tmpl_reportData($reportnumber, $allowed_reports, $date_format, $host_lo
 
 	$reportdata[] = "  <tbody>";
 
+	$raw_result_failed = array('fail', null, 'none', 'neutral');
+
 	global $mysqli;
 	$sql = "SELECT * FROM rptrecord where serial = $reportnumber";
 	$query = $mysqli->query($sql) or die("Query failed: ".$mysqli->error." (Error #" .$mysqli->errno.")");
 	while($row = $query->fetch_assoc()) {
 		$status="";
-		if (($row['dkimresult'] == "fail") && ($row['spfresult'] == "fail")) {
-			$status="red";
-		} elseif (($row['dkimresult'] == "fail") || ($row['spfresult'] == "fail")) {
-			$status="orange";
-		} elseif (($row['dkimresult'] == "pass") && ($row['spfresult'] == "pass")) {
+		if (($row['dkim_align'] === "pass") && ($row['spf_align'] === "pass")) {
 			$status="lime";
-		} else {
+		} elseif (($row['dkim_align'] === "pass") || ($row['spf_align'] === "pass")) {
 			$status="yellow";
+		} elseif (in_array($row['dkimresult'], $raw_result_failed, true) && in_array($row['spfresult'], $raw_result_failed, true)
+			&& strtolower($row['spfdomain']) === strtolower($row['identifier_hfrom']) ) {
+			$status="red";
+		} else {
+			$status="orange";
 		};
 
 		if ( $row['ip'] ) {
