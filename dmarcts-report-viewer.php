@@ -36,7 +36,7 @@ function format_date($date, $format) {
 	return $answer;
 };
 
-function tmpl_reportList($allowed_reports, $host_lookup = 1) {
+function tmpl_reportList($allowed_reports, $date_format, $host_lookup = 1) {
 	$reportlist[] = "";
 	$reportlist[] = "<!-- Start of report list -->";
 
@@ -56,10 +56,9 @@ function tmpl_reportList($allowed_reports, $host_lookup = 1) {
 	$reportlist[] = "  <tbody>";
 
 	foreach ($allowed_reports[BySerial] as $row) {
-		$date_output_format = "r";
 		$reportlist[] =  "    <tr>";
-		$reportlist[] =  "      <td class='right'>". format_date($row['mindate'], $date_output_format). "</td>";
-		$reportlist[] =  "      <td class='right'>". format_date($row['maxdate'], $date_output_format). "</td>";
+		$reportlist[] =  "      <td class='right'>". format_date($row['mindate'], $date_format). "</td>";
+		$reportlist[] =  "      <td class='right'>". format_date($row['maxdate'], $date_format). "</td>";
 		$reportlist[] =  "      <td class='center'>". $row['domain']. "</td>";
 		$reportlist[] =  "      <td class='center'>". $row['org']. "</td>";
 		$reportlist[] =  "      <td class='center'><a href='?report=" . $row['serial'] . ( $host_lookup ? "&hostlookup=1" : "&hostlookup=0" ) . "#rpt". $row['serial'] . "'>". $row['reportid']. "</a></td>";
@@ -77,7 +76,7 @@ function tmpl_reportList($allowed_reports, $host_lookup = 1) {
 	return implode("\n  ",$reportlist);
 }
 
-function tmpl_reportData($reportnumber, $allowed_reports, $host_lookup = 1) {
+function tmpl_reportData($reportnumber, $allowed_reports, $date_format, $host_lookup = 1) {
 
 	if (!$reportnumber) {
 		return "";
@@ -89,7 +88,7 @@ function tmpl_reportData($reportnumber, $allowed_reports, $host_lookup = 1) {
 	if (isset($allowed_reports[BySerial][$reportnumber])) {
 		$row = $allowed_reports[BySerial][$reportnumber];
     $reportdata[] = "<a id='rpt".$reportnumber."'></a>";
-		$reportdata[] = "<div class='center reportdesc'><p> Report from ".$row['org']." for ".$row['domain']."<br>(". format_date($row['mindate'], "r" ). " - ".format_date($row['maxdate'], "r" ).")<br> Policies: adkim=" . $row[policy_adkim] . ", aspf=" . $row[policy_aspf] .  ", p=" . $row[policy_p] .  ", sp=" . $row[policy_sp] .  ", pct=" . $row[policy_pct] . "</p></div>";
+		$reportdata[] = "<div class='center reportdesc'><p> Report from ".$row['org']." for ".$row['domain']."<br>(". format_date($row['mindate'], $date_format ). " - ".format_date($row['maxdate'], $date_format ).")<br> Policies: adkim=" . $row[policy_adkim] . ", aspf=" . $row[policy_aspf] .  ", p=" . $row[policy_p] .  ", sp=" . $row[policy_sp] .  ", pct=" . $row[policy_pct] . "</p></div>";
 	} else {
 		return "Unknown report number!";
 	}
@@ -192,6 +191,7 @@ function tmpl_page ($body, $reportid, $host_lookup = 1) {
 // must exist.
 include "dmarcts-report-viewer-config.php";
 
+$date_format= isset( $default_date_format ) ? $default_date_format : "r";
 
 if(isset($_GET['report']) && is_numeric($_GET['report'])){
   $reportid=$_GET['report']+0;
@@ -207,7 +207,6 @@ if(isset($_GET['hostlookup']) && is_numeric($_GET['hostlookup'])){
 }else{
   die('Invalid hostlookup flag');
 }
-
 
 // Make a MySQL Connection using mysqli
 $mysqli = new mysqli($dbhost, $dbuser, $dbpass, $dbname);
@@ -240,8 +239,8 @@ while($row = $query->fetch_assoc()) {
 
 // Generate Page with report list and report data (if a report is selected).
 echo tmpl_page( ""
-	.tmpl_reportList($allowed_reports, $hostlookup)
-	.tmpl_reportData($reportid, $allowed_reports, $hostlookup )
+	.tmpl_reportList($allowed_reports, $date_format, $hostlookup)
+	.tmpl_reportData($reportid, $allowed_reports, $date_format, $hostlookup )
 	, $reportid
 	, $hostlookup
 );
