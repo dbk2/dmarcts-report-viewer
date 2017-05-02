@@ -44,6 +44,7 @@ function tmpl_reportList($allowed_reports, $selected_report_id, $date_format, $h
 	$reportlist[] = "<table class='reportlist'>";
 	$reportlist[] = "  <thead>";
 	$reportlist[] = "    <tr>";
+	$reportlist[] = "      <th>ID</th>";
 	$reportlist[] = "      <th>Start Date</th>";
 	$reportlist[] = "      <th>End Date</th>";
 	$reportlist[] = "      <th>Domain</th>";
@@ -58,6 +59,7 @@ function tmpl_reportList($allowed_reports, $selected_report_id, $date_format, $h
 	foreach ($allowed_reports[BySerial] as $row) {
 		$status = $row['serial'] == $selected_report_id ? "selected" : "";
 		$reportlist[] =  "    <tr class='".$status."'>";
+		$reportlist[] =  "      <td class='right'>". $row['serial'] . "</td>";
 		$reportlist[] =  "      <td class='right'>". format_date($row['mindate'], $date_format). "</td>";
 		$reportlist[] =  "      <td class='right'>". format_date($row['maxdate'], $date_format). "</td>";
 		$reportlist[] =  "      <td class='center'>". $row['domain']. "</td>";
@@ -234,7 +236,7 @@ define("ByOrganisation", 3);
 // Get allowed reports and cache them - using serial as key
 $allowed_reports = array();
 # Include the rcount via left join, so we do not have to make an sql query for every single report.
-$sql = "SELECT report.* , sum(rptrecord.rcount) as rcount FROM `report` LEFT Join rptrecord on report.serial = rptrecord.serial group by serial order by mindate";
+$sql = "SELECT report.* , sum(rptrecord.rcount) as rcount FROM `report` LEFT Join rptrecord on report.serial = rptrecord.serial group by serial order by serial desc";
 $query = $mysqli->query($sql) or die("Query failed: ".$mysqli->error." (Error #" .$mysqli->errno.")");
 while($row = $query->fetch_assoc()) {
 	//todo: check ACL if this row is allowed
