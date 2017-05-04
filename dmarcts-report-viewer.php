@@ -51,6 +51,7 @@ function tmpl_reportList($allowed_reports, $selected_report_id, $date_format, $h
 	$reportlist[] = "      <th>Reporting Organization</th>";
 	$reportlist[] = "      <th>Report ID</th>";
 	$reportlist[] = "      <th>Messages</th>";
+	$reportlist[] = "      <th>Raw</th>";
 	$reportlist[] = "    </tr>";
 	$reportlist[] = "  </thead>";
 
@@ -58,6 +59,12 @@ function tmpl_reportList($allowed_reports, $selected_report_id, $date_format, $h
 
 	foreach ($allowed_reports[BySerial] as $row) {
 		$status = $row['serial'] == $selected_report_id ? "selected" : "";
+		$rawtype = '';
+		if (isset($row['raw_xml'])) {
+			$rawtype = 'xml';
+		} elseif (isset($row['gz_xml'])) {
+			$rawtype = 'xml.gz';
+		}
 		$reportlist[] =  "    <tr class='".$status."'>";
 		$reportlist[] =  "      <td class='right'>". $row['serial'] . "</td>";
 		$reportlist[] =  "      <td class='right'>". format_date($row['mindate'], $date_format). "</td>";
@@ -66,6 +73,7 @@ function tmpl_reportList($allowed_reports, $selected_report_id, $date_format, $h
 		$reportlist[] =  "      <td class='center'>". $row['org']. "</td>";
 		$reportlist[] =  "      <td class='center'><a href='?report=" . $row['serial'] . ( $host_lookup ? "&hostlookup=1" : "&hostlookup=0" ) . "#rpt". $row['serial'] . "'>". $row['reportid']. "</a></td>";
 		$reportlist[] =  "      <td class='center'>". $row['rcount']. "</td>";
+		$reportlist[] =  "      <td class='center'><a href='?report=" . $row['serial'] . "&raw=" . $rawtype . "'>" . $rawtype . "</a></td>";
 		$reportlist[] =  "    </tr>";
 	}
 	$reportlist[] =  "  </tbody>";
@@ -170,6 +178,31 @@ function tmpl_reportData($reportnumber, $allowed_reports, $date_format, $host_lo
 	return implode("\n  ",$reportdata);
 }
 
+function raw_reportData($reportnumber, $type) {
+	global $mysqli;
+	$sql = "SELECT reportid, raw_xml, gz_xml FROM report where serial = $reportnumber";
+	$query = $mysqli->query($sql) or die("Query failed: ".$mysqli->error." (Error #" .$mysqli->errno.")");
+	$xml = null;
+	if($row = $query->fetch_assoc()) {
+		switch ($type) {
+			case 'xml':
+				header('Content-Type: application/xml');
+				$xml = $row['raw_xml'];
+				break;
+			case 'xml.gz':
+				header('Content-Type: application/gzip');
+				$xml = $row['gz_xml'];
+				break;
+		}
+		header('Content-Disposition: inline; filename="' . rawurlencode($row['reportid']) . '.' . $type . '"');
+	}
+	if ($xml !== null ) {
+		echo $xml;
+	} else {
+		header("HTTP/1.0 404 Not Found");
+	}
+}
+
 function tmpl_page ($body, $reportid, $host_lookup = 1) {
 	$html       = array();
 	$url_switch = ( $reportid ? "?report=$reportid&hostlookup=" : "?hostlookup=" )
@@ -219,6 +252,7 @@ if(isset($_GET['hostlookup']) && is_numeric($_GET['hostlookup'])){
 }else{
   die('Invalid hostlookup flag');
 }
+$rawtype = isset($_GET['raw']) ? $_GET['raw'] : false;
 
 // Make a MySQL Connection using mysqli
 $mysqli = new mysqli($dbhost, $dbuser, $dbpass, $dbname);
@@ -226,6 +260,11 @@ if ($mysqli->connect_errno) {
 	echo "Error: Failed to make a MySQL connection, here is why: \n";
 	echo "Errno: " . $mysqli->connect_errno . "\n";
 	echo "Error: " . $mysqli->connect_error . "\n";
+	exit;
+}
+
+if ($rawtype) {
+	raw_reportData($reportid, $rawtype);
 	exit;
 }
 
