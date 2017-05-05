@@ -24,6 +24,11 @@ table.reportlist tbody tr:first-child td {
 	padding-top: 10px;
 }
 
+.showmore {
+	margin: 0 auto 2em auto;
+	text-align: center;
+}
+
 
 
 .reportdesc {

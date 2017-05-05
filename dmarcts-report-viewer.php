@@ -36,7 +36,7 @@ function format_date($date, $format) {
 	return $answer;
 };
 
-function tmpl_reportList($allowed_reports, $selected_report_id, $date_format, $host_lookup = 1) {
+function tmpl_reportList($allowed_reports, $selected_report_id, $date_format, $host_lookup) {
 	$reportlist[] = "";
 	$reportlist[] = "<!-- Start of report list -->";
 
@@ -71,7 +71,7 @@ function tmpl_reportList($allowed_reports, $selected_report_id, $date_format, $h
 		$reportlist[] =  "      <td class='right'>". format_date($row['maxdate'], $date_format). "</td>";
 		$reportlist[] =  "      <td class='center'>". $row['domain']. "</td>";
 		$reportlist[] =  "      <td class='center'>". $row['org']. "</td>";
-		$reportlist[] =  "      <td class='center'><a href='?report=" . $row['serial'] . ( $host_lookup ? "&hostlookup=1" : "&hostlookup=0" ) . "#rpt". $row['serial'] . "'>". $row['reportid']. "</a></td>";
+		$reportlist[] =  "      <td class='center'><a href='?report=" . $row['serial'] . "&hostlookup=" . $host_lookup . "#rpt". $row['serial'] . "'>". $row['reportid']. "</a></td>";
 		$reportlist[] =  "      <td class='center'>". $row['rcount']. "</td>";
 		$reportlist[] =  "      <td class='center'><a href='?report=" . $row['serial'] . "&raw=" . $rawtype . "'>" . $rawtype . "</a></td>";
 		$reportlist[] =  "    </tr>";
@@ -87,7 +87,14 @@ function tmpl_reportList($allowed_reports, $selected_report_id, $date_format, $h
 	return implode("\n  ",$reportlist);
 }
 
-function tmpl_reportData($reportnumber, $allowed_reports, $date_format, $host_lookup = 1) {
+function tmpl_reportListMore($report_limit, $host_lookup) {
+	if ($report_limit === 0) {
+		return '';
+	}
+	return "\n  <div class='showmore'><a href='?limit=$report_limit&hostlookup=$host_lookup'>Show more</a></div>";
+}
+
+function tmpl_reportData($reportnumber, $allowed_reports, $date_format, $host_lookup) {
 
 	if (!$reportnumber) {
 		return "";
@@ -152,10 +159,10 @@ function tmpl_reportData($reportnumber, $allowed_reports, $date_format, $host_lo
 		$reportdata[] = "    <tr class='".$status."'>";
 		$reportdata[] = "      <td>". $ip. "</td>";
 		if ( $host_lookup ) {
-      $reportdata[] = "      <td>". gethostbyaddr($ip). "</td>";
-    } else {
-      $reportdata[] = "      <td>#off#</td>";
-    }
+			$reportdata[] = "      <td>". gethostbyaddr($ip). "</td>";
+		} else {
+			$reportdata[] = "      <td>#off#</td>";
+		}
 		$reportdata[] = "      <td>". $row['rcount']. "</td>";
 		$reportdata[] = "      <td>". $row['disposition']. "</td>";
 		$reportdata[] = "      <td>". $row['dkim_align']. "</td>";
@@ -203,10 +210,9 @@ function raw_reportData($reportnumber, $type) {
 	}
 }
 
-function tmpl_page ($body, $reportid, $host_lookup = 1) {
+function tmpl_page ($body, $reportid, $report_limit, $host_lookup) {
 	$html       = array();
-	$url_switch = ( $reportid ? "?report=$reportid&hostlookup=" : "?hostlookup=" )
-                . ($host_lookup ? "0" : "1" );
+	$url_switch = '?' . ($reportid ? "report=$reportid&" : '') . ($report_limit !== false ? "limit=$report_limit&" : '') . 'hostlookup=' . (1 - $host_lookup);
 
 	$html[] = "<!DOCTYPE html>";
 	$html[] = "<html>";
@@ -216,7 +222,7 @@ function tmpl_page ($body, $reportid, $host_lookup = 1) {
 	$html[] = "  </head>";
 
 	$html[] = "  <body>";
-  $html[] = "  <div class='options'>Hostname Lookup is " . ($host_lookup ? "on" : "off" ) . " [<a href=\"$url_switch\">" . ($host_lookup ? "off" : "on" ) . "</a>]</div>";
+	$html[] = "  <div class='options'>Hostname Lookup is " . ($host_lookup ? 'on' : 'off') . " [<a href='$url_switch'>" . ($host_lookup ? 'off' : 'on') . "</a>]</div>";
 
 	$html[] = $body;
 
@@ -237,6 +243,7 @@ function tmpl_page ($body, $reportid, $host_lookup = 1) {
 include "dmarcts-report-viewer-config.php";
 
 $date_format= isset( $default_date_format ) ? $default_date_format : "r";
+$page_limit= isset( $default_page_limit ) ? $default_page_limit : 0;
 
 if(isset($_GET['report']) && is_numeric($_GET['report'])){
   $reportid=$_GET['report']+0;
@@ -244,6 +251,15 @@ if(isset($_GET['report']) && is_numeric($_GET['report'])){
   $reportid=false;
 }else{
   die('Invalid Report ID');
+}
+if($page_limit > 0 && isset($_GET['limit'])){
+	if (is_numeric($_GET['limit'])){
+		$report_limit=$_GET['limit']+0;
+	}else{
+		die('Invalid Report Limit');
+	}
+}else{
+	$report_limit=$page_limit;
 }
 if(isset($_GET['hostlookup']) && is_numeric($_GET['hostlookup'])){
   $hostlookup=$_GET['hostlookup']+0;
@@ -274,10 +290,25 @@ define("ByOrganisation", 3);
 
 // Get allowed reports and cache them - using serial as key
 $allowed_reports = array();
+$current_report_limit = $report_limit > 0 ? $report_limit : PHP_INT_MAX;
+$auto_limit = $reportid !== false;
+$has_more_reports = false;
 # Include the rcount via left join, so we do not have to make an sql query for every single report.
 $sql = "SELECT report.* , sum(rptrecord.rcount) as rcount FROM `report` LEFT Join rptrecord on report.serial = rptrecord.serial group by serial order by serial desc";
 $query = $mysqli->query($sql) or die("Query failed: ".$mysqli->error." (Error #" .$mysqli->errno.")");
 while($row = $query->fetch_assoc()) {
+	if ($current_report_limit-- === 0) {
+		if ($auto_limit) {
+			$current_report_limit += $page_limit;
+			$report_limit += $page_limit;
+		} else {
+			$has_more_reports = true;
+			break;
+		}
+	}
+	if ($auto_limit && $row['serial'] == $reportid) {
+		$auto_limit = false;
+	}
 	//todo: check ACL if this row is allowed
 	if (true) {
 		//add data by serial
@@ -291,8 +322,10 @@ while($row = $query->fetch_assoc()) {
 // Generate Page with report list and report data (if a report is selected).
 echo tmpl_page( ""
 	.tmpl_reportList($allowed_reports, $reportid, $date_format, $hostlookup)
-	.tmpl_reportData($reportid, $allowed_reports, $date_format, $hostlookup )
+	.tmpl_reportListMore($has_more_reports ? $report_limit + $page_limit : 0, $hostlookup)
+	.tmpl_reportData($reportid, $allowed_reports, $date_format, $hostlookup)
 	, $reportid
+	, $report_limit !== $page_limit ? $report_limit : false
 	, $hostlookup
 );
 ?>
